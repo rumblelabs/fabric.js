@@ -21,6 +21,7 @@ testrunner.run({
       './test/unit/text.js',
       './test/unit/util.js',
       './test/unit/image.js',
+      './test/unit/image_filters.js',
       './test/unit/group.js',
       './test/unit/parser.js',
       './test/unit/canvas.js',
@@ -30,12 +31,13 @@ testrunner.run({
       './test/unit/shadow.js'
     ]
 }, function(err, report) {
+  if (err) {
+    console.log(err);
+    process.exit(1);
+  }
   if(report.failed > 0){
     process.on('exit', function() {
       process.exit(1);
     });
-  }
-  if (err) {
-    console.log(err);
   }
 });

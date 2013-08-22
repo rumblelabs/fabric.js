@@ -20,19 +20,19 @@
                   '13.99], ["z", null]]}], "background": "#ff5555"}';
 
   var PATH_DATALESS_JSON = '{"objects":[{"type":"path","originX":"center","originY":"center","left":200,"top":200,"width":200,"height":200,"fill":"rgb(0,0,0)",'+
-                           '"overlayFill":null,"stroke":null,"strokeWidth":1,"strokeDashArray":null,"scaleX":1,"scaleY":1,"angle":0,"flipX":false,'+
-                           '"flipY":false,"opacity":1,"selectable":true,"hasControls":true,"hasBorders":true,"hasRotatingPoint":true,"transparentCorners":true,"perPixelTargetFind":false,"shadow":null,'+
-                           '"path":"http://example.com/"}],"background":""}';
+                           '"overlayFill":null,"stroke":null,"strokeWidth":1,"strokeDashArray":null,"strokeLineCap":"butt","strokeLineJoin":"miter","strokeMiterLimit":10,'+
+                           '"scaleX":1,"scaleY":1,"angle":0,"flipX":false,"flipY":false,"opacity":1,"selectable":true,"hasControls":true,"hasBorders":true,"hasRotatingPoint":true,"transparentCorners":true,'+
+                           '"perPixelTargetFind":false,"shadow":null,"visible":true,"clipTo":null,"path":"http://example.com/","pathOffset":{"x":100,"y":100}}],"background":""}';
 
   var RECT_JSON = '{"objects":[{"type":"rect","originX":"center","originY":"center","left":0,"top":0,"width":10,"height":10,"fill":"rgb(0,0,0)","overlayFill":null,'+
-                  '"stroke":null,"strokeWidth":1,"strokeDashArray":null,"scaleX":1,"scaleY":1,"angle":0,"flipX":false,"flipY":false,"opacity":1,"selectable":true,'+
-                  '"hasControls":true,"hasBorders":true,"hasRotatingPoint":true,"transparentCorners":true,"perPixelTargetFind":false,"shadow":null,"rx":0,"ry":0}],'+
-                  '"background":"#ff5555"}';
+                  '"stroke":null,"strokeWidth":1,"strokeDashArray":null,"strokeLineCap":"butt","strokeLineJoin":"miter","strokeMiterLimit":10,'+
+                  '"scaleX":1,"scaleY":1,"angle":0,"flipX":false,"flipY":false,"opacity":1,"selectable":true,"hasControls":true,"hasBorders":true,"hasRotatingPoint":true,'+
+                  '"transparentCorners":true,"perPixelTargetFind":false,"shadow":null,"visible":true,"clipTo":null,"rx":0,"ry":0,"x":0,"y":0}],"background":"#ff5555"}';
 
   var RECT_JSON_WITH_PADDING = '{"objects":[{"type":"rect","originX":"center","originY":"center","left":0,"top":0,"width":10,"height":20,"fill":"rgb(0,0,0)","overlayFill":null,'+
-                               '"stroke":null,"strokeWidth":1,"strokeDashArray":null,"scaleX":1,"scaleY":1,"angle":0,"flipX":false,"flipY":false,"opacity":1,"selectable":true,'+
-                               '"hasControls":true,"hasBorders":true,"hasRotatingPoint":true,"transparentCorners":true,"perPixelTargetFind":false,"shadow":null,"padding":123,"foo":"bar","rx":0,"ry":0}],'+
-                               '"background":""}';
+                               '"stroke":null,"strokeWidth":1,"strokeDashArray":null,"strokeLineCap":"butt","strokeLineJoin":"miter","strokeMiterLimit":10,'+
+                               '"scaleX":1,"scaleY":1,"angle":0,"flipX":false,"flipY":false,"opacity":1,"selectable":true,"hasControls":true,"hasBorders":true,"hasRotatingPoint":true,'+
+                               '"transparentCorners":true,"perPixelTargetFind":false,"shadow":null,"visible":true,"clipTo":null,"padding":123,"foo":"bar","rx":0,"ry":0,"x":0,"y":0}],"background":""}';
 
   // force creation of static canvas
   // TODO: fix this
@@ -99,6 +99,36 @@
     equal(canvas.getObjects().length, 4, 'should support multiple arguments');
   });
 
+  test('add renderOnAddRemove disabled', function() {
+    var rect = makeRect(),
+        originalRenderOnAddition,
+        renderAllCount = 0;
+
+    function countRenderAll() {
+      renderAllCount++;
+    }
+
+    originalRenderOnAddition = canvas.renderOnAddRemove;
+    canvas.renderOnAddRemove = false;
+
+    canvas.on('after:render', countRenderAll);
+
+    ok(canvas === canvas.add(rect), 'should be chainable');
+    equal(renderAllCount, 0);
+
+    equal(canvas.item(0), rect);
+
+    canvas.add(makeRect(), makeRect(), makeRect());
+    equal(canvas.getObjects().length, 4, 'should support multiple arguments');
+    equal(renderAllCount, 0);
+
+    canvas.renderAll();
+    equal(renderAllCount, 1);
+
+    canvas.off('after:render', countRenderAll);
+    canvas.renderOnAddRemove = originalRenderOnAddition;
+  });
+
   test('insertAt', function() {
     var rect1 = makeRect(),
         rect2 = makeRect();
@@ -113,6 +143,40 @@
     canvas.insertAt(rect, 2);
     equal(canvas.item(2), rect);
     equal(canvas, canvas.insertAt(rect, 2), 'should be chainable');
+  });
+
+  test('insertAt renderOnAddRemove disabled', function() {
+    var rect1 = makeRect(),
+        rect2 = makeRect(),
+        originalRenderOnAddition,
+        renderAllCount = 0;
+
+    function countRenderAll() {
+      renderAllCount++;
+    }
+
+    originalRenderOnAddition = canvas.renderOnAddRemove;
+    canvas.renderOnAddRemove = false;
+
+    canvas.on('after:render', countRenderAll);
+
+    canvas.add(rect1, rect2);
+    equal(renderAllCount, 0);
+
+    var rect = makeRect();
+
+    canvas.insertAt(rect, 1);
+    equal(renderAllCount, 0);
+
+    equal(canvas.item(1), rect);
+    canvas.insertAt(rect, 2);
+    equal(renderAllCount, 0);
+
+    canvas.renderAll();
+    equal(renderAllCount, 1);
+
+    canvas.off('after:render', countRenderAll);
+    canvas.renderOnAddRemove = originalRenderOnAddition;
   });
 
   test('clearContext', function() {
@@ -143,7 +207,7 @@
       alert("toDataURL is not supported by this environment. Some of the tests can not be run.");
     }
     else {
-      var dataURL = canvas.toDataURL('png');
+      var dataURL = canvas.toDataURL();
       // don't compare actual data url, as it is often browser-dependent
       // this.assertIdentical(emptyImageCanvasData, canvas.toDataURL('png'));
       equal(typeof dataURL, 'string');
@@ -200,7 +264,6 @@
     ok(withPreamble != withoutPreamble);
     equal(withoutPreamble.slice(0, 4), '<svg', 'svg should start with root node when premable is suppressed');
   });
-
 
   test('toJSON', function() {
     ok(typeof canvas.toJSON == 'function');
@@ -353,6 +416,24 @@
     });
   });
 
+  test('toJSON custom properties non-existence check', function() {
+    var rect = new fabric.Rect({ width: 10, height: 20 });
+    rect.padding = 123;
+    canvas.add(rect);
+    rect.foo = 'bar';
+
+    canvas.bar = 456;
+
+    var data = canvas.toJSON(['padding', 'foo', 'bar', 'baz']);
+    ok('padding' in data.objects[0]);
+    ok('foo' in data.objects[0], 'foo shouldn\'t be included if it\'s not in an object');
+    ok(!('bar' in data.objects[0]), 'bar shouldn\'t be included if it\'s not in an object');
+    ok(!('baz' in data.objects[0]), 'bar shouldn\'t be included if it\'s not in an object');
+    ok(!('foo' in data));
+    ok(!('baz' in data));
+    ok('bar' in data);
+  });
+
   test('remove', function() {
     ok(typeof canvas.remove == 'function');
     var rect1 = makeRect(),
@@ -360,6 +441,35 @@
     canvas.add(rect1, rect2);
     equal(canvas.remove(rect1), rect1, 'should return removed object');
     equal(canvas.item(0), rect2, 'only second object should be left');
+  });
+
+  test('remove renderOnAddRemove disabled', function() {
+    var rect1 = makeRect(),
+        rect2 = makeRect(),
+        originalRenderOnAddition,
+        renderAllCount = 0;
+
+    function countRenderAll() {
+      renderAllCount++;
+    }
+
+    originalRenderOnAddition = canvas.renderOnAddRemove;
+    canvas.renderOnAddRemove = false;
+
+    canvas.on('after:render', countRenderAll);
+
+    canvas.add(rect1, rect2);
+    equal(renderAllCount, 0);
+
+    equal(canvas.remove(rect1), rect1, 'should return removed object');
+    equal(renderAllCount, 0);
+    equal(canvas.item(0), rect2, 'only second object should be left');
+
+    canvas.renderAll();
+    equal(renderAllCount, 1);
+
+    canvas.off('after:render', countRenderAll);
+    canvas.renderOnAddRemove = originalRenderOnAddition;
   });
 
   test('sendToBack', function() {
@@ -491,6 +601,63 @@
     equal(canvas.item(2), rect3);
   });
 
+  test('moveTo', function() {
+    ok(typeof canvas.moveTo == 'function');
+
+    var rect1 = makeRect(),
+        rect2 = makeRect(),
+        rect3 = makeRect();
+
+    canvas.add(rect1, rect2, rect3);
+
+    // [ 1, 2, 3 ]
+    equal(canvas.item(0), rect1);
+    equal(canvas.item(1), rect2);
+    equal(canvas.item(2), rect3);
+
+    canvas.moveTo(rect3, 0);
+
+    // moved 3 to level 0 — [3, 1, 2]
+    equal(canvas.item(1), rect1);
+    equal(canvas.item(2), rect2);
+    equal(canvas.item(0), rect3);
+
+    canvas.moveTo(rect3, 1);
+
+    // moved 3 to level 1 — [1, 3, 2]
+    equal(canvas.item(0), rect1);
+    equal(canvas.item(2), rect2);
+    equal(canvas.item(1), rect3);
+
+    canvas.moveTo(rect3, 2);
+
+    // moved 3 to level 2 — [1, 2, 3]
+    equal(canvas.item(0), rect1);
+    equal(canvas.item(1), rect2);
+    equal(canvas.item(2), rect3);
+
+    canvas.moveTo(rect3, 2);
+
+    // moved 3 to same level 2 and so doesn't change position — [1, 2, 3]
+    equal(canvas.item(0), rect1);
+    equal(canvas.item(1), rect2);
+    equal(canvas.item(2), rect3);
+
+    canvas.moveTo(rect2, 0);
+
+    // moved 2 to level 0 — [2, 1, 3]
+    equal(canvas.item(1), rect1);
+    equal(canvas.item(0), rect2);
+    equal(canvas.item(2), rect3);
+
+    canvas.moveTo(rect2, 2);
+
+    // moved 2 to level 2 — [1, 3, 2]
+    equal(canvas.item(0), rect1);
+    equal(canvas.item(2), rect2);
+    equal(canvas.item(1), rect3);
+  });
+
   test('item', function() {
     ok(typeof canvas.item == 'function');
 
@@ -543,14 +710,14 @@
     ok(typeof canvas.getWidth == 'function');
     equal(canvas.getWidth(), 600);
     equal(canvas.setWidth(444), canvas, 'chainable');
-    equal(canvas.getWidth(), fabric.isLikelyNode ? undefined: 444);
+    equal(canvas.getWidth(), 444);
   });
 
   test('getSetHeight', function() {
     ok(typeof canvas.getHeight == 'function');
     equal(canvas.getHeight(), 600);
     equal(canvas.setHeight(765), canvas, 'chainable');
-    equal(canvas.getHeight(), fabric.isLikelyNode ? undefined : 765);
+    equal(canvas.getHeight(), 765);
   });
 
   test('toGrayscale', function() {
